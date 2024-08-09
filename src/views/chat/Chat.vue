@@ -1,6 +1,6 @@
-
 <script setup>
 import { inject, ref, onMounted, nextTick } from 'vue';
+import { marked } from 'marked'; // `marked` 라이브러리 임포트
 
 const pageTitle = inject('pageTitle');
 const chatMessages = ref(null);
@@ -34,39 +34,61 @@ const sendMessage = async (message = null) => {
   await nextTick();
   scrollToBottom();
   
-  simulateBotResponse(messageText);
+  // 봇 메시지 객체 생성 및 추가
+  const botMessage = {
+    text: ref(''), // 반응성 있는 텍스트 속성
+    sender: 'bot',
+    date: new Date(),
+    isStreaming: true
+  };
+  messages.value.push(botMessage);
+  
+  // API 호출 및 응답 스트리밍
+  await streamResponse(messageText, botMessage);
 };
 
-const simulateBotResponse = async (userMessage) => {
-  let botResponse = '';
-
-  switch (userMessage) {
-    case "이번달 소비에대해 분석해줘":
-      botResponse = "이번 달 소비를 분석해보니, 식비가 가장 큰 비중을 차지하고 있습니다. 지난달에 비해 10% 증가했네요.";
-      break;
-    case "이번달 주거비는 얼마야?":
-      botResponse = "이번 달 주거비는 총 80만원입니다. 여기에는 월세, 관리비, 공과금이 포함되어 있습니다.";
-      break;
-    case "어디에 가장 많이 지출했어?":
-      botResponse = "이번 달 가장 많이 지출한 카테고리는 '식비'입니다. 전체 지출의 약 30%를 차지했네요.";
-      break;
-    case "나한테 맞는 카드 추천해줘":
-      botResponse = "사용 패턴을 분석해본 결과, 식비와 대중교통 혜택이 좋은 'A카드'가 적합해 보입니다.";
-      break;
-    default:
-      botResponse = "죄송합니다. 해당 질문에 대한 답변을 준비 중입니다.";
-  }
-
-  setTimeout(async () => {
-    const botMessage = {
-      text: botResponse,
-      sender: 'bot',
-      date: new Date()
-    };
-    messages.value.push(botMessage);
+const streamResponse = async (prompt, botMessage) => {
+  const userId = 5; // 예시 사용자 ID
+  const url = `https://t1115.p.ssafy.io/ai/prompt?user_id=${userId}&prompt=${encodeURIComponent(prompt)}`;
+  
+  try {
+    const response = await fetch(url);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      // 응답 데이터에서 `data:` 문자열을 제거하고, 공백을 정리
+      const chunk = decoder.decode(value);
+      accumulatedText += cleanChunk(chunk);
+      botMessage.text.value = accumulatedText; // 텍스트 업데이트
+      botMessage.html = marked(accumulatedText); // 마크다운을 HTML로 변환
+      await nextTick(); // Vue의 DOM 업데이트 대기
+      scrollToBottom();
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    botMessage.text.value = '죄송합니다. 오류가 발생했습니다.';
+  } finally {
+    botMessage.isStreaming = false;
     await nextTick();
     scrollToBottom();
-  }, 1000);
+  }
+};
+
+
+// 응답 데이터에서 `data:` 문자열을 제거하고, 공백을 정리하는 함수
+const cleanChunk = (chunk) => {
+  // `data:` 문자열 제거 및 불필요한 공백 제거
+  const cleaned = chunk
+    .replace(/data:\s*/g, '') // `data:` 문자열 제거
+    .replace(/\s+/g, ' ') // 중복된 공백을 하나의 공백으로 변환
+    .trim(); // 문자열의 시작과 끝 공백 제거
+  
+  return cleaned;
 };
 
 const scrollToBottom = () => {
@@ -101,6 +123,7 @@ onMounted(() => {
 </script>
 
 
+
 <template>
     <div class="chat-container">
       <div class="chat-messages" ref="chatMessages">
@@ -110,7 +133,9 @@ onMounted(() => {
           </div>
           <div :class="['message', message.sender]">
             <div class="message-bubble">
-              {{ message.text }}
+              <!-- {{ message.text }} -->
+              <span v-if="message.isStreaming">...</span>
+              <div v-else v-html="message.html"></div>
               <div v-if="message.suggestions" class="suggestion-buttons">
                 <button 
                   v-for="suggestion in message.suggestions" 
