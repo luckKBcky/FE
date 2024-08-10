@@ -4,8 +4,6 @@ import { Chart, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import ChartDeferred from 'chartjs-plugin-deferred';
 
-//import { useDashboardStore } from "@/stores/dashboard";
-//const dashboardStore = useDashboardStore();
 
 const props = defineProps({
   width: {
@@ -16,10 +14,18 @@ const props = defineProps({
     type: String,
     default: "300px",
   },
+  data: {
+    type: Array,
+    default: [],
+  },
+  sum: {
+    type: Number,
+    default: 0,
+  }
 });
 
-const error = ref([10, 30]); // Success, Fail 순 퍼센트
-const errorCount = ref([]);
+const labels = ref([]);
+const money = ref([]); 
 const chartRef = ref(null);
 let chart = null;
 
@@ -29,11 +35,12 @@ Chart.register(ChartDeferred);
 
 
 const chartData = reactive({
-  labels: ['OHT Error', 'Facility Error'],
+  labels: labels,
   datasets: [
     {
-      backgroundColor: ['#59A7FF', '#292D30'],
-      data: error,
+      backgroundColor: ['#E24D79', '#FB9D56', '#B2D131', '#0BA9BF', '#B972EF',  
+                        '#DF597B', '#FDB661', '#A0B619', '#70CEE1', '#849AA9',],
+      data: money,
       borderWidth: 0
     }
   ]
@@ -43,34 +50,11 @@ const chartOptions = reactive({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-        tooltip: {
-            backgroundColor: '#ffffff',
-            xAlign: 'center',
-            yAlign: 'center',
-            titleColor: '#555555',
-            titleAlign: 'center',
-            titleFont: {
-                weight: 'bold',
-                size: 20,
-                lineHeight: 1.5
-            },
-            bodyColor: '#555555',
-            bodyAlign: 'center',
-            bodyFont: {
-                size: 15,
-                lineHeight: 1.5
-            },
-            displayColors: false, // 색상 제거
-            callbacks: {
-                label: function(context) {
-                    return errorCount.value[context.dataIndex] + '건';
-                }
-            }
-        },
         datalabels: {
             color: '#ffffff',
             formatter: function(value, context) {
-                return value+'%';
+                if(value == 0) return '';
+                return formatNumber(value/props.sum)+'%';
             },
         },
         legend: {
@@ -101,35 +85,37 @@ function drawChart() {
 }
 
 onMounted(async() => {
-  //dataUpdate();
+  labels.value = extractNames(props.data);
+  money.value = extractAmounts(props.data);
   drawChart();
 });
 
+function extractNames(data) {
+  return data.map(item => item.name);
+}
 
-// watch(() => dashboardStore.watchedJobResultAnalysisData, (oldValue, newValue) => {
-//   //dataUpdate();
-//   drawChart();
-// },{ deep: true }); 
+function extractAmounts(data) {
+  return data.map(item => item.amount);
+}
 
-// function dataUpdate() {
-//   let newData = []
-//   newData.push(dashboardStore.jobResultAnalysisData["job-result-error"]["oht-error-percentage"].toFixed(2));
-//   newData.push(dashboardStore.jobResultAnalysisData["job-result-error"]["facility-error-percentage"].toFixed(2));
-//   error.value = newData;
-//   chartData.datasets[0].data = [...error.value];
+const formatNumber = (value) => {
+  const formattedValue = parseFloat(value).toFixed(2);
+  return formattedValue.endsWith(".00")
+    ? parseInt(formattedValue)
+    : formattedValue;
+};
 
-//   newData = []
-//   newData.push(dashboardStore.jobResultAnalysisData["job-result-error"]["oht-error"]);
-//   newData.push(dashboardStore.jobResultAnalysisData["job-result-error"]["facility-error"]);
-//   errorCount.value = newData;
-// }
+watch(() => props.data, (oldValue, newValue) => {
+  labels.value = extractNames(props.data);
+  money.value = extractAmounts(props.data);
+  drawChart();
+},{ deep: true }); 
 
 </script>
 
 <template>
     <div :style="{width:width, height:height}">
       <canvas ref="chartRef"> </canvas>
-        <!-- <Doughnut :data="chartData" :options="chartOptions" /> -->
     </div>
 </template>
 
