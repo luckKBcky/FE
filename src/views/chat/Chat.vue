@@ -122,52 +122,51 @@ onMounted(() => {
 });
 </script>
 
-
-
 <template>
-    <div class="chat-container">
-      <div class="chat-messages" ref="chatMessages">
-        <div v-for="(message, index) in messages" :key="index">
-          <div v-if="showDateDivider(index)" class="date-divider">
-            <span>{{ formatDate(message.date) }}</span>
-          </div>
-          <div :class="['message', message.sender]">
-            <div class="message-bubble">
-              <!-- {{ message.text }} -->
-              <span v-if="message.isStreaming">...</span>
-              <div v-else v-html="message.html"></div>
-              <div v-if="message.suggestions" class="suggestion-buttons">
-                <button 
-                  v-for="suggestion in message.suggestions" 
-                  :key="suggestion"
-                  @click="sendMessage(suggestion)"
-                >
-                  {{ suggestion }}
-                </button>
-              </div>
+  <div class="chat-container">
+    <div class="chat-messages" ref="chatMessages">
+      <div v-for="(message, index) in messages" :key="index">
+        <div v-if="showDateDivider(index)" class="date-divider">
+          <span>{{ formatDate(message.date) }}</span>
+        </div>
+        <div :class="['message', message.sender]">
+          <div class="message-bubble">
+            {{ message.text }}
+            <span v-if="message.isStreaming">...</span>
+            <div v-else v-html="message.html"></div>
+            <div v-if="message.suggestions" class="suggestion-buttons">
+              <button 
+                v-for="suggestion in message.suggestions" 
+                :key="suggestion"
+                @click="sendMessage(suggestion)"
+              >
+                {{ suggestion }}
+              </button>
             </div>
           </div>
         </div>
       </div>
-      <div class="chat-input">
-        <input 
-          v-model="newMessage" 
-          @keyup.enter="sendMessage()" 
-          placeholder="메시지를 입력하세요..."
-        />
-      </div>
     </div>
-  </template>
-  
+    <div class="chat-input">
+      <button class="add-button" @click="onAddClick"><font-awesome-icon :icon="['fas', 'plus']" size="xl" style="color: #ffffff;" /></button>
+      <input 
+        v-model="newMessage" 
+        @keyup.enter="sendMessage()" 
+        placeholder="메시지를 입력하세요..."
+      />
+    </div>
+  </div>
+</template>
+
 
 <style scoped>
 .chat-container {
-    display: flex;
-    flex-direction: column;
-    height: 90vh;
-    background-color: #FBF8E9;
+  display: flex;
+  flex-direction: column;
+  height: 90vh;
+  background-color: #FBF8E9;
 }
-  
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -224,17 +223,28 @@ onMounted(() => {
 }
 
 .chat-input {
-  height: 70px;
-  padding: 10px;
-  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  height: 60px;
+  /* padding: 5px; */
+}
+
+.add-button {
+  flex: 0.7;
+  background-color: #64635E;
+  border: none;
+  height: 100%;
+  font-size: 20px;
 }
 
 .chat-input input {
-  width: 100%;
+  flex: 4;
   height: 100%;
   padding: 10px;
-  border: 1px solid #ced4da;
-  border-radius: 10px;
+  border-top: 1px solid #ced4da;
+  border-bottom: 1px solid #ced4da;
+  border-left: none;
+  border-right: none;
   font-size: 15px;
 }
 
@@ -253,6 +263,5 @@ onMounted(() => {
   cursor: pointer;
   font-size: 0.9em;
 }
-
 </style>
 
