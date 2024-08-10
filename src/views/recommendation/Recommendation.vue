@@ -1,6 +1,13 @@
 <script setup>
 import HeadText from "@/components/text/HeadText.vue"
 import TitleText from "@/components/text/TitleText.vue"
+import { inject, ref, onMounted, nextTick } from 'vue';
+
+const pageTitle = inject('pageTitle');
+onMounted(() => {
+  pageTitle.value = '카드 추천';
+});
+
 </script>
 
 <template>

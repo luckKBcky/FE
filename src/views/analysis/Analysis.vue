@@ -2,6 +2,12 @@
 import HeadText from "@/components/text/HeadText.vue"
 import TitleText from "@/components/text/TitleText.vue"
 import DonughnutChart from "@/views/analysis/DoughnutChart.vue";
+import { inject, ref, onMounted, nextTick } from 'vue';
+
+const pageTitle = inject('pageTitle');
+onMounted(() => {
+  pageTitle.value = '거래 내역 분석';
+});
 
 </script>
 
@@ -9,8 +15,13 @@ import DonughnutChart from "@/views/analysis/DoughnutChart.vue";
     <main>
         <HeadText header-text="이주혁님" />
         <div class="month-container">
+            <div class="month-button" @click="goBack">
+                <font-awesome-icon :icon="['fas', 'caret-left']" style="color: #323232;" />
+            </div>
             <TitleText title-text="7월"/>
-
+            <div class="month-button" @click="goBack">
+                <font-awesome-icon :icon="['fas', 'caret-right']" style="color: #323232;" />
+            </div>
         </div>
         <div class="amount-container">
             <HeadText header-text="1,234,567" color="#4E84F0"/>
@@ -59,13 +70,20 @@ main {
     background-color: #F6F7F8;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
     padding: 20px;
 }
 .month-container {
     display: flex;
     flex-direction: row;
+    align-items: center;
     width: 300px;
+    gap: 10px;
+}
+
+.month-button {
+    font-size: 30px;
+    cursor: pointer;
 }
 
 .amount-container {
@@ -79,6 +97,7 @@ main {
     display: inline-block;
     width: 100%;
     border-radius: 10px;
+    margin: 5px 0px;
     padding: 20px 0px;
     background-color: white;
     box-shadow: 0 0px 10px rgba(0,0,0,0.05), 0 0px 10px rgba(0,0,0,0.05);
