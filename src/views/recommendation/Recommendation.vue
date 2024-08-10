@@ -74,7 +74,7 @@ onMounted(() => {
     </main>
 </template>
 
-<style>
+<style scoped>
 main {
     background-color: #F6F7F8;
     display: flex;
