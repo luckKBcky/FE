@@ -22,9 +22,9 @@ onMounted(() => {
 
 <template>
   <div class="container">
-    <NavigationBar/>
-    <RouterView/>
-    <TabBar/>
+    <NavigationBar class="nav"/>
+    <RouterView class="view"/>
+    <TabBar class="tab"/>
   </div>
 </template>
 
@@ -32,7 +32,25 @@ onMounted(() => {
 @import "@/assets/reset.css";
 
 .container {
-  width: 100%;
-  height: 100%;
+  display: flex;
+  flex-direction: column; /* 수직으로 배치 */
+  height: 100vh;
+}
+
+.container > * {
+  flex-shrink: 0; /* 자식 요소가 줄어들지 않도록 설정 */
+}
+
+.nav {
+  flex: 0 0 auto; /* 높이가 고정됨 */
+}
+
+.view {
+  flex: 1; /* 남은 공간을 차지하도록 설정 */
+  overflow-y: auto; /* 내용이 넘칠 경우 스크롤이 생기도록 설정 */
+}
+
+.tab {
+  flex: 0 0 auto; /* 높이가 고정됨 */
 }
 </style>
