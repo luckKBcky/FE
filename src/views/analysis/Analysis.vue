@@ -2,12 +2,104 @@
 import HeadText from "@/components/text/HeadText.vue"
 import TitleText from "@/components/text/TitleText.vue"
 import DonughnutChart from "@/views/analysis/DoughnutChart.vue";
-import { inject, ref, onMounted, nextTick } from 'vue';
+import { inject, ref, onMounted, computed } from 'vue';
+import axios from 'axios';
 
 const pageTitle = inject('pageTitle');
-onMounted(() => {
-  pageTitle.value = '거래 내역 분석';
+
+const currentDate = new Date();
+const month = ref(currentDate.getMonth() + 1); // 월 가져오기 (0부터 시작하므로 +1 해줘야 함)
+
+const data = ref({
+"leisure": {
+"name": "여가",
+"amount": 12650
+},
+"food": {
+"name": "식비",
+"amount": 10620
+},
+"etc": {
+"name": "기타",
+"amount": 4000
+},
+"allowance": {
+"name": "용돈",
+"amount": 0
+},
+"clothing": {
+"name": "옷",
+"amount": 0
+},
+"dating": {
+"name": "데이트",
+"amount": 0
+},
+"savings": {
+"name": "저축",
+"amount": 0
+},
+"beauty": {
+"name": "미용",
+"amount": 0
+},
+"studies": {
+"name": "학업",
+"amount": 0
+},
+"convenience": {
+"name": "편의",
+"amount": 0
+}
 });
+const orderedItems = ref([]);
+const array = ref([]);
+const sum = ref(0)
+
+
+onMounted(async () => {
+    pageTitle.value = '거래 내역 분석';
+    await getData();
+});
+
+const getData = async() => {
+    // try {
+    //     const response = await axios.get(`https://t1115.p.ssafy.io/ai/getJSON?month=${month.value}`);
+    //     data.value = response.data;
+    // } catch (error) {
+    //     console.error('API 요청 중 오류 발생:', error);
+    // }
+    orderedItems.value = convertObjectToArray(data.value);
+    console.log(orderedItems.value);
+    sum.value = data.value.etc.amount + data.value.food.amount + data.value.leisure.amount 
+                + data.value.beauty.amount + data.value.allowance.amount + data.value.clothing.amount
+                + data.value.dating.amount + data.value.savings.amount + data.value.studies.amount + data.value.convenience.amount;
+}
+
+function convertObjectToArray(obj) {
+  return Object.values(obj);
+}
+
+const formatNumber = (value) => {
+  const formattedValue = parseFloat(value).toFixed(2);
+  return formattedValue.endsWith(".00")
+    ? parseInt(formattedValue)
+    : formattedValue;
+};
+
+function formatNumberWithComma(number) {
+  return number.toLocaleString();
+}
+
+async function nextMonth() {
+    month.value = month.value + 1;
+    await getData();
+}
+
+async function lastMonth() {
+    month.value = month.value - 1;
+    await getData();
+}
 
 </script>
 
@@ -15,50 +107,34 @@ onMounted(() => {
     <main>
         <HeadText header-text="이주혁님" />
         <div class="month-container">
-            <div class="month-button" @click="goBack">
+            <div class="month-button" @click="lastMonth">
                 <font-awesome-icon :icon="['fas', 'caret-left']" style="color: #323232;" />
             </div>
-            <TitleText title-text="7월"/>
-            <div class="month-button" @click="goBack">
+            <TitleText :title-text="month+'월'"/>
+            <div class="month-button" @click="nextMonth">
                 <font-awesome-icon :icon="['fas', 'caret-right']" style="color: #323232;" />
             </div>
         </div>
         <div class="amount-container">
-            <HeadText header-text="1,234,567" color="#4E84F0"/>
+            <HeadText :header-text="formatNumberWithComma(sum)" color="#4E84F0"/>
             <TitleText title-text="원"/>
         </div>
         <div class="white-box chart-white-box">
-            <TitleText title-text="7월 한달 간 다음과 같이 지출했어요."/>
+            <TitleText :title-text="month + '월 한달 간 다음과 같이 지출했어요.'"/>
             <div class="white-box-content">
-                <DonughnutChart />
+                <DonughnutChart :data="orderedItems" :sum="sum"/>
             </div>
         </div>
         <div class="white-box rank-white-box">
             <TitleText title-text="지출 어디에 한걸까요?"/>
             <div class="white-box-content white-box-content-card">
-                <div class="card-box">
-                    <div class="ranking-box">1위</div>
+                <div class="card-box" v-for="(item, index) in orderedItems" :key="index" :style="{'background-color': index==0 ? '#E1EDFD' : '#F6F9F8'}">
+                    <div class="ranking-box" :style="{'background-color': index==0 ? '#4483F7' : '#7F8591'}">{{index+1}}위</div>
                     <div>
-                        <HeadText header-text="주거"/>
-                        <HeadText header-text="45만원"/>
+                        <HeadText :header-text="item.name"/>
+                        <HeadText :header-text="formatNumberWithComma(item.amount) + '원'"/>
                     </div>
-                    <div class="percent-box">44.8%(1건)</div>
-                </div>
-                <div class="card-box">
-                    <div class="ranking-box">1위</div>
-                    <div>
-                        <HeadText header-text="주거"/>
-                        <HeadText header-text="45만원"/>
-                    </div>
-                    <div class="percent-box">44.8%(1건)</div>
-                </div>
-                <div class="card-box">
-                    <div class="ranking-box">1위</div>
-                    <div>
-                        <HeadText header-text="주거"/>
-                        <HeadText header-text="45만원"/>
-                    </div>
-                    <div class="percent-box">44.8%(1건)</div>
+                    <div class="percent-box">{{formatNumber(item.amount/sum * 100)}}%</div>
                 </div>
             </div>
         </div>
@@ -128,7 +204,7 @@ main {
 }
 
 .card-box {
-    width: 150px;
+    width: 170px;
     height: 200px;
     border-radius: 10px;
     padding: 10px 10px;
