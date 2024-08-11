@@ -12,7 +12,7 @@ const props = defineProps({
   },
   height: {
     type: String,
-    default: "300px",
+    default: "250px",
   },
   data: {
     type: Array,
