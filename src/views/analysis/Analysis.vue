@@ -182,6 +182,7 @@ main {
 .chart-white-box {
     padding-left: 20px;
     padding-right: 20px;
+    padding-bottom: 0px;
 }
 
 .rank-white-box {

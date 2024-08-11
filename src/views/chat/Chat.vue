@@ -1,6 +1,7 @@
 <script setup>
 import { inject, ref, onMounted, nextTick } from 'vue';
-import { marked } from 'marked'; // `marked` 라이브러리 임포트
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 const pageTitle = inject('pageTitle');
 const chatMessages = ref(null);
@@ -34,21 +35,20 @@ const sendMessage = async (message = null) => {
   await nextTick();
   scrollToBottom();
   
-  // 봇 메시지 객체 생성 및 추가
   const botMessage = {
-    text: ref(''), // 반응성 있는 텍스트 속성
+    text: ref(''),
     sender: 'bot',
     date: new Date(),
-    isStreaming: true
+    isStreaming: true,
+    html: ref('')
   };
   messages.value.push(botMessage);
   
-  // API 호출 및 응답 스트리밍
   await streamResponse(messageText, botMessage);
 };
 
 const streamResponse = async (prompt, botMessage) => {
-  const userId = 5; // 예시 사용자 ID
+  const userId = 5;
   const url = `https://t1115.p.ssafy.io/ai/prompt?user_id=${userId}&prompt=${encodeURIComponent(prompt)}`;
   
   try {
@@ -56,17 +56,21 @@ const streamResponse = async (prompt, botMessage) => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let accumulatedText = '';
+    let firstChunk  = true;
     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      if(firstChunk) {
+        firstChunk = false;
+        continue;
+      }
       
-      // 응답 데이터에서 `data:` 문자열을 제거하고, 공백을 정리
-      const chunk = decoder.decode(value);
-      accumulatedText += cleanChunk(chunk);
-      botMessage.text.value = accumulatedText; // 텍스트 업데이트
-      botMessage.html = marked(accumulatedText); // 마크다운을 HTML로 변환
-      await nextTick(); // Vue의 DOM 업데이트 대기
+      const chunk = cleanChunk(decoder.decode(value));
+      accumulatedText += chunk;
+      botMessage.text.value = accumulatedText;
+      botMessage.html.value = formatTextForHtml(accumulatedText);
+      await nextTick();
       scrollToBottom();
     }
   } catch (error) {
@@ -79,16 +83,22 @@ const streamResponse = async (prompt, botMessage) => {
   }
 };
 
-
-// 응답 데이터에서 `data:` 문자열을 제거하고, 공백을 정리하는 함수
 const cleanChunk = (chunk) => {
-  // `data:` 문자열 제거 및 불필요한 공백 제거
-  const cleaned = chunk
-    .replace(/data:\s*/g, '') // `data:` 문자열 제거
-    .replace(/\s+/g, ' ') // 중복된 공백을 하나의 공백으로 변환
-    .trim(); // 문자열의 시작과 끝 공백 제거
+  if (!chunk.includes('data:')) {
+    return ''; // "data: "를 포함하지 않으면 빈 문자열 반환
+  }
+  const cleaned = chunk.replace(/data: /g, '').trimEnd();
+  return (cleaned === '') ? '\n' : cleaned;
+};
+
+const formatTextForHtml = (text) => {
+  let htmlText = text.replace(/\*\*(.*?)\*\*/g, '<span class="highlight">$1</span>');
+  htmlText = htmlText.replace(/\n/g, '<br>');
+  if (text.endsWith('...')) {
+    htmlText += '<span>...</span>';
+  }
   
-  return cleaned;
+  return DOMPurify.sanitize(htmlText);
 };
 
 const scrollToBottom = () => {
@@ -122,6 +132,7 @@ onMounted(() => {
 });
 </script>
 
+
 <template>
   <div class="chat-container">
     <div class="chat-messages" ref="chatMessages">
@@ -131,10 +142,16 @@ onMounted(() => {
         </div>
         <div :class="['message', message.sender]">
           <div class="message-bubble">
-            {{ message.text }}
-            <span v-if="message.isStreaming">...</span>
-            <div v-else v-html="message.html"></div>
+            <template v-if="message.sender === 'user'">
+              {{ message.text }}
+            </template>
+            <template v-else>
+              <div v-if="message.isStreaming" v-html="message.html.replace(/\n/g, '<br>') + '<span>...</span>'"></div>
+              <!-- <div v-if="message.isStreaming">{{ message.text }}<span>...</span></div> -->
+              <!-- <div v-else v-html="message.html"></div> -->
+            </template>
             <div v-if="message.suggestions" class="suggestion-buttons">
+              <p>{{ message.text }}</p>
               <button 
                 v-for="suggestion in message.suggestions" 
                 :key="suggestion"
@@ -157,7 +174,6 @@ onMounted(() => {
     </div>
   </div>
 </template>
-
 
 <style scoped>
 .chat-container {
@@ -253,6 +269,10 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 5px;
   margin-top: 10px;
+}
+
+.suggestion-buttons p{
+  color: #3d3d3d;
 }
 
 .suggestion-buttons button {
