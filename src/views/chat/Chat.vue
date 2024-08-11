@@ -1,72 +1,74 @@
 <script setup>
-import { inject, ref, onMounted, nextTick } from 'vue';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
+import { inject, ref, onMounted, nextTick } from "vue";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 
-const pageTitle = inject('pageTitle');
+const pageTitle = inject("pageTitle");
 const chatMessages = ref(null);
-const newMessage = ref('');
+const newMessage = ref("");
 const messages = ref([
-  { 
-    text: '안녕하세요! 무엇을 도와드릴까요?', 
-    sender: 'bot', 
+  {
+    text: "안녕하세요! 무엇을 도와드릴까요?",
+    sender: "bot",
     date: new Date(),
     suggestions: [
       "이번달 소비에대해 분석해줘",
       "이번달 주거비는 얼마야?",
       "어디에 가장 많이 지출했어?",
-      "나한테 맞는 카드 추천해줘"
-    ]
+      "나한테 맞는 카드 추천해줘",
+    ],
   },
 ]);
 
 const sendMessage = async (message = null) => {
   const messageText = message || newMessage.value.trim();
-  if (messageText === '') return;
-  
+  if (messageText === "") return;
+
   const userMessage = {
     text: messageText,
-    sender: 'user',
-    date: new Date()
+    sender: "user",
+    date: new Date(),
   };
   messages.value.push(userMessage);
-  newMessage.value = '';
-  
+  newMessage.value = "";
+
   await nextTick();
   scrollToBottom();
-  
+
   const botMessage = {
-    text: ref(''),
-    sender: 'bot',
+    text: ref(""),
+    sender: "bot",
     date: new Date(),
     isStreaming: true,
-    html: ref('')
+    html: ref(""),
   };
   messages.value.push(botMessage);
-  
+
   await streamResponse(messageText, botMessage);
 };
 
 const streamResponse = async (prompt, botMessage) => {
   const userId = 5;
-  const url = `https://t1115.p.ssafy.io/ai/prompt?user_id=${userId}&prompt=${encodeURIComponent(prompt)}`;
-  
+  const url = `https://t1115.p.ssafy.io/ai/prompt?user_id=${userId}&prompt=${encodeURIComponent(
+    prompt
+  )}`;
+
   try {
     const response = await fetch(url);
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let accumulatedText = '';
-    let firstChunk  = true;
-    
+    let accumulatedText = "";
+    let firstChunk = true;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      if(firstChunk) {
+      if (firstChunk) {
         firstChunk = false;
         continue;
       }
-      
+
       const chunk = cleanChunk(decoder.decode(value));
+
       accumulatedText += chunk;
       botMessage.text.value = accumulatedText;
       botMessage.html.value = formatTextForHtml(accumulatedText);
@@ -74,8 +76,8 @@ const streamResponse = async (prompt, botMessage) => {
       scrollToBottom();
     }
   } catch (error) {
-    console.error('Error:', error);
-    botMessage.text.value = '죄송합니다. 오류가 발생했습니다.';
+    console.error("Error:", error);
+    botMessage.text.value = "죄송합니다. 오류가 발생했습니다.";
   } finally {
     botMessage.isStreaming = false;
     await nextTick();
@@ -84,20 +86,29 @@ const streamResponse = async (prompt, botMessage) => {
 };
 
 const cleanChunk = (chunk) => {
-  if (!chunk.includes('data:')) {
-    return ''; // "data: "를 포함하지 않으면 빈 문자열 반환
+  if (!chunk.includes("data:")) {
+    return ""; // "data: "를 포함하지 않으면 빈 문자열 반환
   }
-  const cleaned = chunk.replace(/data: /g, '').trimEnd();
-  return (cleaned === '') ? '\n' : cleaned;
+
+  // 직전 chunk가 빈 문자열이고, 현재 chunk도 빈 문자열이면 줄바꿈 추가
+  if (chunk.length == 27) {
+    return ".<br>";
+  }
+
+  const cleaned = chunk.replace(/data: /g, "").trimEnd();
+  if (chunk) return cleaned;
 };
 
 const formatTextForHtml = (text) => {
-  let htmlText = text.replace(/\*\*(.*?)\*\*/g, '<span class="highlight">$1</span>');
-  htmlText = htmlText.replace(/\n/g, '<br>');
-  if (text.endsWith('...')) {
-    htmlText += '<span>...</span>';
+  let htmlText = text.replace(
+    /\*\*(.*?)\*\*/g,
+    '<span class="highlight" style="background-color: yellow; font-weight: bold;">$1</span>'
+  );
+  htmlText = htmlText.replace(/\n/g, "<br>");
+  if (text.endsWith("...")) {
+    htmlText += "<span>...</span>";
   }
-  
+
   return DOMPurify.sanitize(htmlText);
 };
 
@@ -119,19 +130,18 @@ const isSameDay = (date1, date2) => {
 };
 
 const formatDate = (date) => {
-  return date.toLocaleDateString('ko-KR', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return date.toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 };
 
 onMounted(() => {
-  pageTitle.value = '챗봇상담';
+  pageTitle.value = "챗봇상담";
   scrollToBottom();
 });
 </script>
-
 
 <template>
   <div class="chat-container">
@@ -146,14 +156,19 @@ onMounted(() => {
               {{ message.text }}
             </template>
             <template v-else>
-              <div v-if="message.isStreaming" v-html="message.html.replace(/\n/g, '<br>') + '<span>...</span>'"></div>
+              <div
+                v-if="message.isStreaming"
+                v-html="
+                  message.html.replace(/\n/g, '<br>') + '<span>...</span>'
+                "
+              ></div>
               <!-- <div v-if="message.isStreaming">{{ message.text }}<span>...</span></div> -->
               <!-- <div v-else v-html="message.html"></div> -->
             </template>
             <div v-if="message.suggestions" class="suggestion-buttons">
               <p>{{ message.text }}</p>
-              <button 
-                v-for="suggestion in message.suggestions" 
+              <button
+                v-for="suggestion in message.suggestions"
                 :key="suggestion"
                 @click="sendMessage(suggestion)"
               >
@@ -165,10 +180,16 @@ onMounted(() => {
       </div>
     </div>
     <div class="chat-input">
-      <button class="add-button" @click="onAddClick"><font-awesome-icon :icon="['fas', 'plus']" size="xl" style="color: #ffffff;" /></button>
-      <input 
-        v-model="newMessage" 
-        @keyup.enter="sendMessage()" 
+      <button class="add-button" @click="onAddClick">
+        <font-awesome-icon
+          :icon="['fas', 'plus']"
+          size="xl"
+          style="color: #ffffff"
+        />
+      </button>
+      <input
+        v-model="newMessage"
+        @keyup.enter="sendMessage()"
         placeholder="메시지를 입력하세요..."
       />
     </div>
@@ -180,7 +201,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: 90vh;
-  background-color: #FBF8E9;
+  background-color: #fbf8e9;
 }
 
 .chat-messages {
@@ -205,7 +226,7 @@ onMounted(() => {
 }
 
 .user .message-bubble {
-  background-color: #F9D759;
+  background-color: #f9d759;
   color: #000000;
 }
 
@@ -223,14 +244,14 @@ onMounted(() => {
   align-items: center;
   text-align: center;
   margin: 0px 0px 20px 0px;
-  color: #5A5A5A;
+  color: #5a5a5a;
 }
 
 .date-divider::before,
 .date-divider::after {
-  content: '';
+  content: "";
   flex: 1;
-  border-bottom: 1px dashed #5A5A5A;
+  border-bottom: 1px dashed #5a5a5a;
 }
 
 .date-divider span {
@@ -247,7 +268,7 @@ onMounted(() => {
 
 .add-button {
   flex: 0.7;
-  background-color: #64635E;
+  background-color: #64635e;
   border: none;
   height: 100%;
   font-size: 20px;
@@ -271,7 +292,7 @@ onMounted(() => {
   margin-top: 10px;
 }
 
-.suggestion-buttons p{
+.suggestion-buttons p {
   color: #3d3d3d;
 }
 
@@ -283,5 +304,9 @@ onMounted(() => {
   cursor: pointer;
   font-size: 0.9em;
 }
-</style>
 
+/* .highlight {
+  background-color: yellow;
+  font-weight: bold;
+} */
+</style>
